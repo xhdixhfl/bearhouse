@@ -1,0 +1,24 @@
+{
+  "name": "곰돌집",
+  "short_name": "곰돌집",
+  "description": "우리 집 동거 관리 앱",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FDF6EE",
+  "theme_color": "#E8845A",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
