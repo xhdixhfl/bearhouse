@@ -2,7 +2,7 @@
   "name": "곰돌집",
   "short_name": "곰돌집",
   "description": "우리 집 동거 관리 앱",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#FDF6EE",
   "theme_color": "#E8845A",
