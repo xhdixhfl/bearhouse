@@ -166,11 +166,14 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
     </svg>
   </div>
   <div class="lock-title">곰돌집 🏠</div>
-  <div class="lock-sub">비밀번호를 입력해주세요<br>두 분만 아는 비밀번호로 접근하세요</div>
-  <input class="lock-input" type="password" id="pw-input" placeholder="••••" maxlength="20"
+  <div class="lock-sub">등록된 이메일과 비밀번호로<br>로그인해주세요</div>
+  <input class="lock-input" style="letter-spacing:0;font-size:14px;text-align:left;padding:12px 14px"
+    type="email" id="email-input" placeholder="이메일" autocomplete="email">
+  <input class="lock-input" style="letter-spacing:0;font-size:14px;text-align:left;padding:12px 14px"
+    type="password" id="pw-input" placeholder="비밀번호" autocomplete="current-password"
     onkeydown="if(event.key==='Enter')tryUnlock()">
-  <button class="lock-btn" onclick="tryUnlock()">입력</button>
-  <div class="lock-err hidden" id="pw-err">비밀번호가 틀렸어요 🐾</div>
+  <button class="lock-btn" onclick="tryUnlock()">로그인</button>
+  <div class="lock-err hidden" id="pw-err">이메일 또는 비밀번호가 틀렸어요 🐾</div>
 </div>
 
 <!-- 앱 본체 -->
@@ -193,7 +196,7 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
         <div class="app-sub" id="topbar-sub"></div>
       </div>
     </div>
-    <div class="pill">A · B</div>
+    <div class="pill" style="cursor:pointer" onclick="doSignOut()">로그아웃</div>
   </div>
 
   <div class="scroll" id="scroll-area">
@@ -396,30 +399,43 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
   getFirestore, collection, addDoc, getDocs,
-  deleteDoc, doc, query, orderBy, onSnapshot
+  deleteDoc, doc, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-// ── firebase-config.js에서 불러오기 ──
-import { firebaseConfig, APP_PASSWORD } from "./firebase-config.js";
+import { firebaseConfig } from "./firebase-config.js";
 
 // ── 초기화 ──
-const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
+const app  = initializeApp(firebaseConfig);
+const db   = getFirestore(app);
+const auth = getAuth(app);
 
 // ── 전역 노출 ──
-window._db  = db;
-window._col = collection;
-window._add = addDoc;
-window._get = getDocs;
-window._del = deleteDoc;
-window._doc = doc;
-window._q   = query;
-window._ord = orderBy;
-window._snap= onSnapshot;
-window.APP_PASSWORD = APP_PASSWORD;
+window._db   = db;
+window._auth = auth;
+window._col  = collection;
+window._add  = addDoc;
+window._get  = getDocs;
+window._del  = deleteDoc;
+window._doc  = doc;
+window._q    = query;
+window._ord  = orderBy;
+window._signIn = signInWithEmailAndPassword;
+window._signOut = signOut;
 
-// ── 앱 시작 ──
-window.initApp();
+// ── 인증 상태 감지: 이미 로그인돼 있으면 바로 앱 진입 ──
+onAuthStateChanged(auth, user => {
+  if (user) {
+    document.getElementById('lock-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    loadAll();
+  } else {
+    document.getElementById('lock-screen').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
+  }
+});
 </script>
 
 <script>
@@ -429,31 +445,34 @@ const DAYS = ['일','월','화','수','목','금','토'];
 let calEvents = {}; // { "YYYY-M-D": ['dep','util',...] }
 
 // ──────────────────────────────────────────
-// 잠금 화면
+// 로그인
 // ──────────────────────────────────────────
-function tryUnlock() {
-  const val = document.getElementById('pw-input').value;
-  if (val === window.APP_PASSWORD) {
-    document.getElementById('lock-screen').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-    loadAll();
-  } else {
-    document.getElementById('pw-err').classList.remove('hidden');
+async function tryUnlock() {
+  const email = document.getElementById('email-input').value.trim();
+  const pw    = document.getElementById('pw-input').value;
+  const errEl = document.getElementById('pw-err');
+  const btn   = document.querySelector('.lock-btn');
+  if (!email || !pw) { errEl.textContent = '이메일과 비밀번호를 모두 입력해주세요 🐾'; errEl.classList.remove('hidden'); return; }
+  btn.textContent = '로그인 중...';
+  btn.disabled = true;
+  try {
+    await window._signIn(window._auth, email, pw);
+    // onAuthStateChanged가 자동으로 앱 진입 처리
+  } catch(e) {
+    errEl.textContent = '이메일 또는 비밀번호가 틀렸어요 🐾';
+    errEl.classList.remove('hidden');
     document.getElementById('pw-input').value = '';
+    btn.textContent = '로그인';
+    btn.disabled = false;
   }
 }
 window.tryUnlock = tryUnlock;
 
-// ──────────────────────────────────────────
-// 앱 초기화 (Firebase 로드 후 호출됨)
-// ──────────────────────────────────────────
-window.initApp = function() {
-  buildCal();
-  updateTopbarSub();
-};
-
-// ──────────────────────────────────────────
-// 데이터 로드
+async function doSignOut() {
+  if (!confirm('로그아웃 할까요?')) return;
+  await window._signOut(window._auth);
+}
+window.doSignOut = doSignOut;
 // ──────────────────────────────────────────
 async function loadAll() {
   buildCal();
