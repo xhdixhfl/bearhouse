@@ -1,29 +1,127 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>곰돌집 🐻</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>곰돌집</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #fff7e8;
+      color: #3b2a1a;
+    }
+
+    .container {
+      max-width: 420px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      margin-bottom: 16px;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 10px;
+      border-radius: 12px;
+      border: 1px solid #ddd;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    button {
+      background: #8b5e3c;
+      color: white;
+      border: none;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #70472b;
+    }
+
+    .logout {
+      background: #c46a4a;
+    }
+
+    .item {
+      background: #fff3d8;
+      padding: 12px;
+      border-radius: 12px;
+      margin-top: 8px;
+    }
+
+    .small {
+      font-size: 13px;
+      color: #777;
+    }
+
+    #app {
+      display: none;
+    }
+
+    #message {
+      margin-top: 12px;
+      font-size: 14px;
+      color: #c0392b;
+      white-space: pre-line;
+    }
+  </style>
 </head>
+
 <body>
+  <div class="container">
+    <h1>🐻 곰돌집</h1>
 
-<h2>곰돌집 🐻</h2>
+    <div id="loginArea" class="card">
+      <h2>로그인</h2>
 
-<div id="login">
-  <input id="email" placeholder="이메일">
-  <input id="password" type="password" placeholder="비밀번호">
-  <button onclick="login()">로그인</button>
-</div>
+      <input id="email" type="email" placeholder="이메일 입력" />
+      <input id="password" type="password" placeholder="비밀번호 입력" />
 
-<div id="app" style="display:none;">
-  <p id="user"></p>
+      <button id="loginBtn">로그인</button>
 
-  <input id="text" placeholder="내용 입력">
-  <button onclick="addEvent()">추가</button>
+      <div id="message"></div>
+    </div>
 
-  <ul id="list"></ul>
-</div>
+    <div id="app">
+      <div class="card">
+        <p>
+          로그인 계정:
+          <strong id="userEmail"></strong>
+        </p>
+        <button id="logoutBtn" class="logout">로그아웃</button>
+      </div>
 
-<script type="module" src="app.js"></script>
+      <div class="card">
+        <h2>오늘 기록 추가</h2>
 
+        <input id="eventText" placeholder="예: 전기요금 납부" />
+        <button id="addBtn">추가</button>
+      </div>
+
+      <div class="card">
+        <h2>기록 목록</h2>
+        <div id="list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
