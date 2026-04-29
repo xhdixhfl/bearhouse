@@ -1,5 +1,5 @@
-const CACHE = "gomdol-v1";
-const ASSETS = ["/", "/index.html", "/firebase-config.js", "/manifest.json"];
+const CACHE = "gomdol-v2";
+const ASSETS = ["./", "./index.html", "./firebase-config.js", "./manifest.json"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
