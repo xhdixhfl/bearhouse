@@ -245,9 +245,9 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
     <div id="view-dep" class="hidden tab-content">
       <div class="mrow" id="dep-metrics">
         <div class="mc"><div class="mc-l">총 보증금</div><div class="mc-v" id="m-total">—</div></div>
-        <div class="mc"><div class="mc-l">대출 잔액</div><div class="mc-v" id="m-loan">—</div></div>
-        <div class="mc"><div class="mc-l">A 부담</div><div class="mc-v" id="m-a">—</div></div>
-        <div class="mc"><div class="mc-l">B 부담</div><div class="mc-v" id="m-b">—</div></div>
+        <div class="mc"><div class="mc-l">현금 납입액</div><div class="mc-v" id="m-paid">—</div></div>
+        <div class="mc"><div class="mc-l">대출금액</div><div class="mc-v" id="m-loan">—</div></div>
+        <div class="mc"><div class="mc-l">잔여 필요액</div><div class="mc-v" id="m-remain">—</div></div>
       </div>
       <div class="sec-title">보증금 일정</div>
       <div id="dep-list"><div class="loading">불러오는 중...</div></div>
@@ -301,15 +301,25 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
   <!-- 보증금 추가 모달 -->
   <div class="modal hidden" id="modal-dep">
     <div class="modal-title">🏦 보증금 / 대출 추가 <span class="modal-close" onclick="closeModal()">✕</span></div>
-    <div class="form-group"><label class="form-label">항목명</label><input class="form-input" id="f-dep-name" placeholder="예: 잔금 납입, 월 이자"></div>
+    <div class="form-group"><label class="form-label">항목명</label><input class="form-input" id="f-dep-name" placeholder="예: 계약금, 중도금, 대출 실행"></div>
+    <div class="form-group">
+      <label class="form-label">항목 유형</label>
+      <select class="form-select" id="f-dep-type">
+        <option value="contract">계약금</option>
+        <option value="middle">중도금</option>
+        <option value="balance">잔금</option>
+        <option value="loan">대출금</option>
+        <option value="other">기타</option>
+      </select>
+    </div>
     <div class="form-row2">
       <div class="form-group"><label class="form-label">날짜</label><input class="form-input" type="date" id="f-dep-date"></div>
       <div class="form-group"><label class="form-label">금액 (원)</label><input class="form-input" type="number" id="f-dep-amount" placeholder="0"></div>
     </div>
     <div class="form-group"><label class="form-label">총 보증금 (만원, 선택)</label><input class="form-input" type="number" id="f-dep-total" placeholder="예: 15000"></div>
     <div class="form-row2">
-      <div class="form-group"><label class="form-label">A 부담 (만원)</label><input class="form-input" type="number" id="f-dep-a" placeholder="0"></div>
-      <div class="form-group"><label class="form-label">B 부담 (만원)</label><input class="form-input" type="number" id="f-dep-b" placeholder="0"></div>
+      <div class="form-group"><label class="form-label">A 현금 부담 계획 (만원)</label><input class="form-input" type="number" id="f-dep-a" placeholder="0"></div>
+      <div class="form-group"><label class="form-label">B 현금 부담 계획 (만원)</label><input class="form-input" type="number" id="f-dep-b" placeholder="0"></div>
     </div>
     <div class="form-group"><label class="form-label">메모 (은행명, 금리 등)</label><input class="form-input" id="f-dep-memo" placeholder="예: 국민은행 / 연 3.5%"></div>
     <div class="form-group">
@@ -545,30 +555,69 @@ const fmt = n => Number(n).toLocaleString('ko-KR');
 
 function renderDep(items) {
   const el = document.getElementById('dep-list');
-  if (!items.length) { el.innerHTML = '<div class="empty-state">아직 항목이 없어요 🐾</div>'; return; }
-  let totalSum = 0, aSum = 0, bSum = 0, loanSum = 0;
+
+  // 보증금 탭의 핵심 수정사항:
+  // amount는 더 이상 무조건 대출금으로 보지 않습니다.
+  // type === 'loan'인 항목만 대출금으로 계산하고,
+  // 계약금/중도금/잔금/기타는 현금 납입액으로 계산합니다.
+  const typeLabel = {
+    contract: '계약금',
+    middle: '중도금',
+    balance: '잔금',
+    loan: '대출금',
+    other: '기타'
+  };
+
+  let totalManwon = 0;
+  let paidWon = 0;
+  let loanWon = 0;
+
   items.forEach(i => {
-    if (i.total) totalSum = Math.max(totalSum, Number(i.total));
-    if (i.aShare) aSum = Math.max(aSum, Number(i.aShare));
-    if (i.bShare) bSum = Math.max(bSum, Number(i.bShare));
-    if (i.amount) loanSum += Number(i.amount);
+    const amount = Number(i.amount || 0);
+
+    if (i.total) {
+      totalManwon = Math.max(totalManwon, Number(i.total));
+    }
+
+    if (i.type === 'loan') {
+      loanWon += amount;
+    } else {
+      // 기존에 type 없이 저장된 계약금 데이터도 대출이 아닌 현금 납입으로 처리
+      paidWon += amount;
+    }
   });
-  document.getElementById('m-total').textContent = totalSum ? fmt(totalSum)+'만' : '—';
-  document.getElementById('m-loan').textContent  = loanSum  ? fmt(loanSum)+'원'  : '—';
-  document.getElementById('m-a').textContent     = aSum     ? fmt(aSum)+'만'    : '—';
-  document.getElementById('m-b').textContent     = bSum     ? fmt(bSum)+'만'    : '—';
+
+  const totalWon = totalManwon ? totalManwon * 10000 : 0;
+  const remainWon = totalWon ? Math.max(totalWon - paidWon - loanWon, 0) : 0;
+
+  document.getElementById('m-total').textContent  = totalWon ? fmt(totalWon) + '원' : '—';
+  document.getElementById('m-paid').textContent   = paidWon ? fmt(paidWon) + '원' : '—';
+  document.getElementById('m-loan').textContent   = loanWon ? fmt(loanWon) + '원' : '—';
+  document.getElementById('m-remain').textContent = totalWon ? fmt(remainWon) + '원' : '—';
+
+  if (!items.length) {
+    el.innerHTML = '<div class="empty-state">아직 항목이 없어요 🐾</div>';
+    return;
+  }
+
+  const sorted = [...items].sort((a,b) => (b.date||'').localeCompare(a.date||''));
   el.innerHTML = '<div class="list-card">' +
-    items.map(i => `<div class="list-row">
-      <div class="row-dot" style="background:var(--dd)"></div>
-      <div class="row-main">
-        <div class="row-label">${i.name}</div>
-        <div class="row-meta">${i.date||''} ${i.memo ? '· '+i.memo : ''} ${i.repeat==='monthly'?'· 매월':''}</div>
-      </div>
-      <div class="row-right">
-        <div class="row-val">${i.amount ? fmt(i.amount)+'원' : ''}</div>
-        <button class="del-btn" onclick="deleteItem('deposits','${i.id}',loadDep)">✕</button>
-      </div>
-    </div>`).join('') + '</div>';
+    sorted.map(i => {
+      const label = typeLabel[i.type] || '납입';
+      const amount = i.amount ? fmt(i.amount) + '원' : '';
+      const isLoan = i.type === 'loan';
+      return `<div class="list-row">
+        <div class="row-dot" style="background:${isLoan ? 'var(--danger)' : 'var(--dd)'}"></div>
+        <div class="row-main">
+          <div class="row-label">[${label}] ${i.name || ''}</div>
+          <div class="row-meta">${i.date||''} ${i.memo ? '· '+i.memo : ''} ${i.repeat==='monthly'?'· 매월':''}</div>
+        </div>
+        <div class="row-right">
+          <div class="row-val">${amount}</div>
+          <button class="del-btn" onclick="deleteItem('deposits','${i.id}',loadDep)">✕</button>
+        </div>
+      </div>`;
+    }).join('') + '</div>';
 }
 
 function renderUtil(items) {
@@ -803,6 +852,7 @@ async function submitForm(type) {
       const name = document.getElementById('f-dep-name').value.trim();
       if (!name) { alert('항목명을 입력해주세요'); return; }
       data = {
+        type:   document.getElementById('f-dep-type').value,
         name,
         date:   document.getElementById('f-dep-date').value,
         amount: document.getElementById('f-dep-amount').value,
@@ -865,7 +915,7 @@ window.submitForm = submitForm;
 // PWA 서비스워커 등록
 // ──────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(console.error);
+  navigator.serviceWorker.register('/sw.js').catch(console.error);
 }
 </script>
 
