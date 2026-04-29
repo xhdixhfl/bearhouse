@@ -87,6 +87,15 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
 .exist-title{font-size:11px;color:var(--th);margin-bottom:6px}
 .exist-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid var(--bd)}
 .exist-row:last-child{border-bottom:none}
+.detail-row{cursor:pointer}
+.detail-row:active{background:var(--accs)}
+.detail-badge{font-size:10px;color:#fff;border-radius:10px;padding:2px 6px;white-space:nowrap}
+.detail-card{background:var(--bg);border:0.5px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
+.detail-line{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:0.5px solid var(--bd);font-size:13px}
+.detail-line:last-child{border-bottom:none}
+.detail-key{color:var(--ts);white-space:nowrap}
+.detail-val{color:var(--tm);text-align:right;word-break:break-all}
+.detail-memo{font-size:13px;color:var(--tm);line-height:1.45;white-space:pre-line}
 .exist-left{display:flex;align-items:center;gap:6px}
 .edot{width:7px;height:7px;border-radius:50%}
 .elabel{font-size:13px;color:var(--tm)}
@@ -426,6 +435,13 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
     <button class="form-submit" onclick="submitForm('item')">저장하기 🐾</button>
   </div>
 
+
+  <!-- 홈 일정 상세 모달 -->
+  <div class="modal hidden" id="modal-detail">
+    <div class="modal-title"><span id="detail-title">상세 내용</span> <span class="modal-close" onclick="closeModal()">✕</span></div>
+    <div id="detail-body"></div>
+  </div>
+
 </div>
 
 <!-- Firebase SDK -->
@@ -477,6 +493,7 @@ const TODAY = new Date();
 let cY = TODAY.getFullYear(), cM = TODAY.getMonth(), selD = null, catOpen = false;
 const DAYS = ['일','월','화','수','목','금','토'];
 let calEvents = {}; // { "YYYY-M-D": ['dep','util',...] }
+let calEventDetails = {}; // { "YYYY-M-D": [{type, id, title, subtitle, amount, raw}] }
 
 // ──────────────────────────────────────────
 // 로그인
@@ -509,6 +526,8 @@ async function doSignOut() {
 window.doSignOut = doSignOut;
 // ──────────────────────────────────────────
 async function loadAll() {
+  calEvents = {};
+  calEventDetails = {};
   buildCal();
   await Promise.all([loadDep(), loadUtil(), loadRule(), loadItem()]);
 }
@@ -544,34 +563,101 @@ async function loadItem() {
 function updateCalEvents(type, items) {
   items.forEach(item => {
     const date = item.date;
-    if (!date) return;
-    const [y, m, d] = date.split('-');
-    const key = `${y}-${parseInt(m)}-${parseInt(d)}`;
-    if (!calEvents[key]) calEvents[key] = [];
-    if (!calEvents[key].includes(type)) calEvents[key].push(type);
+    if (date) addCalendarDetail(type, item, date);
+
+    // 반복 규칙은 해당 월의 반복 요일에도 상세 내용을 표시
+    if (type === 'rule' && item.repeatDays && item.repeatDays.length) {
+      markRepeatDays(item);
+    }
   });
-  // 반복 규칙 처리
-  if (type === 'rule') {
-    items.filter(i => i.repeatDays && i.repeatDays.length).forEach(item => {
-      markRepeatDays(item.repeatDays);
-    });
-  }
   buildCal();
 }
 
-function markRepeatDays(days) {
+function addCalendarDetail(type, item, date) {
+  if (!date) return;
+  const [y, m, d] = date.split('-');
+  const key = `${y}-${parseInt(m)}-${parseInt(d)}`;
+
+  if (!calEvents[key]) calEvents[key] = [];
+  if (!calEvents[key].includes(type)) calEvents[key].push(type);
+
+  if (!calEventDetails[key]) calEventDetails[key] = [];
+
+  // 같은 문서가 같은 날짜에 중복으로 들어가지 않도록 방지
+  const detailId = `${type}-${item.id}-${date}`;
+  if (calEventDetails[key].some(e => e.detailId === detailId)) return;
+
+  calEventDetails[key].push({
+    detailId,
+    type,
+    id: item.id,
+    title: getEventTitle(type, item),
+    subtitle: getEventSubtitle(type, item),
+    amount: getEventAmount(type, item),
+    raw: item
+  });
+}
+
+function markRepeatDays(item) {
   const daysOfWeek = ['일','월','화','수','목','금','토'];
   const daysInMonth = new Date(cY, cM + 1, 0).getDate();
+
   for (let d = 1; d <= daysInMonth; d++) {
     const dow = new Date(cY, cM, d).getDay();
-    if (days.includes(daysOfWeek[dow])) {
-      const key = `${cY}-${cM+1}-${d}`;
-      if (!calEvents[key]) calEvents[key] = [];
-      if (!calEvents[key].includes('rule')) calEvents[key].push('rule');
+    if (item.repeatDays.includes(daysOfWeek[dow])) {
+      const date = `${cY}-${String(cM + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      addCalendarDetail('rule', item, date);
     }
   }
 }
 
+function getEventTitle(type, item) {
+  if (type === 'dep') {
+    const typeLabel = { contract:'계약금', middle:'중도금', balance:'잔금', loan:'대출금', other:'기타' };
+    return `[${typeLabel[item.type] || '납입'}] ${item.name || '보증금 항목'}`;
+  }
+  if (type === 'util') return `${item.type || '공과금'} ${item.name || ''}`.trim();
+  if (type === 'rule') return item.content || '생활 규칙';
+  if (type === 'item') return item.name || '가전/비품';
+  return '등록 항목';
+}
+
+function getEventSubtitle(type, item) {
+  if (type === 'dep') return `${item.payer || '미지정'} 납부${item.memo ? ' · ' + item.memo : ''}`;
+  if (type === 'util') return `${item.payer || '미지정'} 납부${item.memo ? ' · ' + item.memo : ''}`;
+  if (type === 'rule') {
+    const repeat = item.repeatDays && item.repeatDays.length ? `매주 ${item.repeatDays.join('·')}` : (item.date || '고정 규칙');
+    return `[${item.category || '기타'}] ${repeat}`;
+  }
+  if (type === 'item') return `${normalizePerson(item.owner) || '미지정'} 소유 · ${item.payer || '미지정'} 결제${item.memo ? ' · ' + item.memo : ''}`;
+  return '';
+}
+
+function getEventAmount(type, item) {
+  if (type === 'dep' || type === 'util') return item.amount ? `${fmt(item.amount)}원` : '';
+  if (type === 'item') return item.price ? `${fmt(item.price)}만` : '';
+  return '';
+}
+
+function normalizePerson(value) {
+  if (value === 'A') return 'J';
+  if (value === 'B') return 'Y';
+  if (value === '공동') return '공통';
+  return value;
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+// ──────────────────────────────────────────
+// 렌더링
+// ──────────────────────────────────────────
 // ──────────────────────────────────────────
 // 렌더링
 // ──────────────────────────────────────────
@@ -724,6 +810,7 @@ async function deleteItem(colName, id, reloadFn) {
   if (!confirm('삭제할까요?')) return;
   await window._del(window._doc(window._db, colName, id));
   calEvents = {};
+  calEventDetails = {};
   await loadAll();
 }
 window.deleteItem = deleteItem;
@@ -781,19 +868,116 @@ function selectDay(d, dow, dots) {
   catOpen = false;
   document.getElementById('dp-body').classList.add('hidden');
   document.getElementById('dp-hint').textContent = '+ 추가하기 ↓';
+
   const exSec  = document.getElementById('exist-sec');
   const exList = document.getElementById('exist-list');
-  if (dots.length) {
+  const key = `${cY}-${cM+1}-${d}`;
+  const details = calEventDetails[key] || [];
+
+  if (details.length) {
     exSec.classList.remove('hidden');
-    const cm = { dep:['var(--dd)','보증금'], util:['var(--du)','공과금'], rule:['var(--dr)','규칙'], item:['var(--di)','가전'] };
-    exList.innerHTML = dots.map(t => `<div class="exist-row">
-      <div class="exist-left"><div class="edot" style="background:${cm[t][0]}"></div>
-      <div><div class="elabel">${cm[t][1]}</div><div class="esub">등록된 항목 있음</div></div></div>
-    </div>`).join('');
+    exList.innerHTML = details.map((item, idx) => renderCalendarDetailRow(item, idx)).join('');
   } else {
     exSec.classList.add('hidden');
     exList.innerHTML = '';
   }
+}
+
+function renderCalendarDetailRow(item, idx) {
+  const cm = {
+    dep:  ['var(--dd)', '보증금'],
+    util: ['var(--du)', '공과금'],
+    rule: ['var(--dr)', '규칙'],
+    item: ['var(--di)', '가전']
+  };
+  const [color, label] = cm[item.type] || ['var(--th)', '기타'];
+
+  return `<div class="exist-row detail-row" onclick="openDetailFromCalendar('${item.detailId}')">
+    <div class="exist-left">
+      <div class="edot" style="background:${color}"></div>
+      <div>
+        <div class="elabel">${escapeHtml(item.title)}</div>
+        <div class="esub">${escapeHtml(item.subtitle || '상세 보기')}</div>
+      </div>
+    </div>
+    <div class="row-right">
+      ${item.amount ? `<div class="row-val">${escapeHtml(item.amount)}</div>` : ''}
+      <span class="detail-badge" style="background:${color}">${label}</span>
+    </div>
+  </div>`;
+}
+
+function openDetailFromCalendar(detailId) {
+  const all = Object.values(calEventDetails).flat();
+  const item = all.find(e => e.detailId === detailId);
+  if (!item) return;
+
+  const typeLabel = { dep:'보증금', util:'공과금', rule:'생활 규칙', item:'가전/비품' };
+  document.getElementById('modal-backdrop').classList.remove('hidden');
+  ['dep','util','rule','item','detail'].forEach(t => {
+    const modal = document.getElementById('modal-' + t);
+    if (modal) modal.classList.add('hidden');
+  });
+
+  document.getElementById('modal-detail').classList.remove('hidden');
+  document.getElementById('detail-title').textContent = `${typeLabel[item.type] || '상세'} 상세`;
+  document.getElementById('detail-body').innerHTML = buildDetailHtml(item);
+}
+window.openDetailFromCalendar = openDetailFromCalendar;
+
+function buildDetailHtml(item) {
+  const raw = item.raw || {};
+  const rows = [];
+
+  if (item.type === 'dep') {
+    const typeLabel = { contract:'계약금', middle:'중도금', balance:'잔금', loan:'대출금', other:'기타' };
+    rows.push(['항목 유형', typeLabel[raw.type] || '납입']);
+    rows.push(['항목명', raw.name || '']);
+    rows.push(['날짜', raw.date || '']);
+    rows.push(['금액', raw.amount ? `${fmt(raw.amount)}원` : '']);
+    rows.push(['납부자', raw.payer || '미지정']);
+    if (raw.total) rows.push(['총 보증금', `${fmt(Number(raw.total) * 10000)}원`]);
+    if (raw.aShare) rows.push(['J 계획 부담', `${fmt(raw.aShare)}만원`]);
+    if (raw.bShare) rows.push(['Y 계획 부담', `${fmt(raw.bShare)}만원`]);
+    if (raw.repeat && raw.repeat !== 'none') rows.push(['반복', raw.repeat === 'monthly' ? '매월 반복' : raw.repeat]);
+  }
+
+  if (item.type === 'util') {
+    rows.push(['종류', raw.type || '']);
+    rows.push(['항목명', raw.name || '']);
+    rows.push(['정산 날짜', raw.date || '']);
+    rows.push(['금액', raw.amount ? `${fmt(raw.amount)}원` : '']);
+    rows.push(['납부자', raw.payer || '미지정']);
+  }
+
+  if (item.type === 'rule') {
+    rows.push(['카테고리', raw.category || '기타']);
+    rows.push(['규칙 내용', raw.content || '']);
+    rows.push(['날짜', raw.date || '']);
+    if (raw.repeatDays && raw.repeatDays.length) rows.push(['반복 요일', raw.repeatDays.join(' · ')]);
+  }
+
+  if (item.type === 'item') {
+    rows.push(['품목명', raw.name || '']);
+    rows.push(['구매일', raw.date || '']);
+    rows.push(['금액', raw.price ? `${fmt(raw.price)}만원` : '']);
+    rows.push(['소유자', normalizePerson(raw.owner) || '미지정']);
+    rows.push(['결제자', raw.payer || '미지정']);
+  }
+
+  const memo = raw.memo ? `<div class="detail-card"><div class="detail-key" style="margin-bottom:6px">메모</div><div class="detail-memo">${escapeHtml(raw.memo)}</div></div>` : '';
+
+  return `
+    <div class="detail-card">
+      ${rows.filter(([_, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => `
+        <div class="detail-line">
+          <div class="detail-key">${escapeHtml(k)}</div>
+          <div class="detail-val">${escapeHtml(v)}</div>
+        </div>
+      `).join('')}
+    </div>
+    ${memo}
+  `;
 }
 
 function toggleCat() {
@@ -809,6 +993,7 @@ function chMonth(d) {
   if (cM < 0)  { cM = 11; cY--; }
   selD = null;
   calEvents = {};
+  calEventDetails = {};
   document.getElementById('day-panel').classList.add('hidden');
   if (window._db) loadAll(); else buildCal();
 }
@@ -843,7 +1028,7 @@ let curModal = null;
 function openModal(type) {
   curModal = type;
   document.getElementById('modal-backdrop').classList.remove('hidden');
-  ['dep','util','rule','item'].forEach(t => document.getElementById('modal-'+t).classList.add('hidden'));
+  ['dep','util','rule','item','detail'].forEach(t => { const modal = document.getElementById('modal-'+t); if (modal) modal.classList.add('hidden'); });
   document.getElementById('modal-'+type).classList.remove('hidden');
   // 날짜 기본값 = 선택한 날짜 or 오늘
   const dateVal = selD
