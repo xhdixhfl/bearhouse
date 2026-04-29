@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <title>곰돌집</title>
 
   <style>
@@ -22,15 +21,14 @@
 
     h1 {
       text-align: center;
-      margin-bottom: 24px;
     }
 
     .card {
-      background: #ffffff;
+      background: white;
       border-radius: 20px;
       padding: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
       margin-bottom: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
 
     input, button {
@@ -51,12 +49,17 @@
       cursor: pointer;
     }
 
-    button:hover {
-      background: #70472b;
+    #app {
+      display: none;
     }
 
-    .logout {
-      background: #c46a4a;
+    #status {
+      margin-top: 12px;
+      padding: 10px;
+      background: #fff3d8;
+      border-radius: 10px;
+      font-size: 14px;
+      white-space: pre-line;
     }
 
     .item {
@@ -71,15 +74,8 @@
       color: #777;
     }
 
-    #app {
-      display: none;
-    }
-
-    #message {
-      margin-top: 12px;
-      font-size: 14px;
-      color: #c0392b;
-      white-space: pre-line;
+    .logout {
+      background: #c46a4a;
     }
   </style>
 </head>
@@ -88,29 +84,26 @@
   <div class="container">
     <h1>🐻 곰돌집</h1>
 
+    <div class="card">
+      <strong>상태 확인</strong>
+      <div id="status">HTML 로딩 완료</div>
+    </div>
+
     <div id="loginArea" class="card">
       <h2>로그인</h2>
-
       <input id="email" type="email" placeholder="이메일 입력" />
       <input id="password" type="password" placeholder="비밀번호 입력" />
-
       <button id="loginBtn">로그인</button>
-
-      <div id="message"></div>
     </div>
 
     <div id="app">
       <div class="card">
-        <p>
-          로그인 계정:
-          <strong id="userEmail"></strong>
-        </p>
+        <p>로그인 계정: <strong id="userEmail"></strong></p>
         <button id="logoutBtn" class="logout">로그아웃</button>
       </div>
 
       <div class="card">
-        <h2>오늘 기록 추가</h2>
-
+        <h2>기록 추가</h2>
         <input id="eventText" placeholder="예: 전기요금 납부" />
         <button id="addBtn">추가</button>
       </div>
@@ -122,6 +115,191 @@
     </div>
   </div>
 
-  <script type="module" src="./app.js"></script>
+  <script type="module">
+    const statusBox = document.getElementById("status");
+
+    function setStatus(message) {
+      statusBox.textContent = message;
+      console.log(message);
+    }
+
+    setStatus("HTML 로딩 완료\nFirebase 불러오는 중...");
+
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+
+    import {
+      getAuth,
+      signInWithEmailAndPassword,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    import {
+      getFirestore,
+      collection,
+      addDoc,
+      getDocs,
+      query,
+      orderBy,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBI1azkUClqu8M_kemltMfPQwlFQuG6Yr4",
+      authDomain: "bearhouse-gom3.firebaseapp.com",
+      projectId: "bearhouse-gom3",
+      storageBucket: "bearhouse-gom3.firebasestorage.app",
+      messagingSenderId: "656131928299",
+      appId: "1:656131928299:web:d1cf4a5476182b8bc94eae"
+    };
+
+    const firebaseApp = initializeApp(firebaseConfig);
+    const auth = getAuth(firebaseApp);
+    const db = getFirestore(firebaseApp);
+
+    setStatus("Firebase 연결 코드 로딩 완료\n로그인 대기 중");
+
+    let currentUser = null;
+
+    const loginArea = document.getElementById("loginArea");
+    const appArea = document.getElementById("app");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const addBtn = document.getElementById("addBtn");
+    const eventTextInput = document.getElementById("eventText");
+    const userEmail = document.getElementById("userEmail");
+    const list = document.getElementById("list");
+
+    loginBtn.addEventListener("click", async () => {
+      setStatus("로그인 버튼 클릭됨\n로그인 시도 중...");
+
+      try {
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+
+        if (!email || !password) {
+          setStatus("이메일과 비밀번호를 모두 입력해주세요.");
+          return;
+        }
+
+        await signInWithEmailAndPassword(auth, email, password);
+
+      } catch (error) {
+        setStatus(
+          "로그인 실패\n\n" +
+          "오류 코드: " + error.code + "\n" +
+          "오류 내용: " + error.message
+        );
+      }
+    });
+
+    logoutBtn.addEventListener("click", async () => {
+      await signOut(auth);
+    });
+
+    addBtn.addEventListener("click", async () => {
+      try {
+        const text = eventTextInput.value.trim();
+
+        if (!text) {
+          setStatus("기록 내용을 입력해주세요.");
+          return;
+        }
+
+        if (!currentUser) {
+          setStatus("로그인이 필요합니다.");
+          return;
+        }
+
+        await addDoc(collection(db, "calendarEvents"), {
+          text: text,
+          houseId: "gomdol-house",
+          createdBy: currentUser.uid,
+          createdByEmail: currentUser.email,
+          createdAt: serverTimestamp()
+        });
+
+        eventTextInput.value = "";
+        setStatus("기록 저장 완료");
+        await loadEvents();
+
+      } catch (error) {
+        setStatus(
+          "기록 저장 실패\n\n" +
+          "오류 코드: " + error.code + "\n" +
+          "오류 내용: " + error.message
+        );
+      }
+    });
+
+    async function loadEvents() {
+      try {
+        list.innerHTML = "불러오는 중...";
+
+        const q = query(
+          collection(db, "calendarEvents"),
+          orderBy("createdAt", "desc")
+        );
+
+        const snapshot = await getDocs(q);
+
+        list.innerHTML = "";
+
+        if (snapshot.empty) {
+          list.innerHTML = "<p class='small'>아직 기록이 없습니다.</p>";
+          return;
+        }
+
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+
+          const div = document.createElement("div");
+          div.className = "item";
+          div.innerHTML = `
+            <div>${data.text || ""}</div>
+            <div class="small">${data.createdByEmail || ""}</div>
+          `;
+
+          list.appendChild(div);
+        });
+
+      } catch (error) {
+        list.innerHTML =
+          "<p class='small'>기록 불러오기 실패<br>" +
+          error.code + "<br>" +
+          error.message +
+          "</p>";
+
+        setStatus(
+          "로그인은 되었지만 기록 불러오기 실패\n\n" +
+          "오류 코드: " + error.code + "\n" +
+          "오류 내용: " + error.message
+        );
+      }
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        currentUser = user;
+
+        loginArea.style.display = "none";
+        appArea.style.display = "block";
+        userEmail.textContent = user.email;
+
+        setStatus("로그인 성공\n기록 불러오는 중...");
+        await loadEvents();
+
+      } else {
+        currentUser = null;
+
+        loginArea.style.display = "block";
+        appArea.style.display = "none";
+
+        setStatus("Firebase 연결 완료\n로그인 대기 중");
+      }
+    });
+  </script>
 </body>
 </html>
