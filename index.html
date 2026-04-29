@@ -275,8 +275,8 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
     <!-- 가전/비품 탭 -->
     <div id="view-item" class="hidden tab-content">
       <div class="mrow">
-        <div class="mc"><div class="mc-l">A 자산</div><div class="mc-v" id="i-a">—</div></div>
-        <div class="mc"><div class="mc-l">B 자산</div><div class="mc-v" id="i-b">—</div></div>
+        <div class="mc"><div class="mc-l">J 자산</div><div class="mc-v" id="i-j">—</div></div>
+        <div class="mc"><div class="mc-l">Y 자산</div><div class="mc-v" id="i-y">—</div></div>
       </div>
       <div class="sec-title">가전 · 비품 목록</div>
       <div id="item-list"><div class="loading">불러오는 중...</div></div>
@@ -316,10 +316,18 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
       <div class="form-group"><label class="form-label">날짜</label><input class="form-input" type="date" id="f-dep-date"></div>
       <div class="form-group"><label class="form-label">금액 (원)</label><input class="form-input" type="number" id="f-dep-amount" placeholder="0"></div>
     </div>
+    <div class="form-group">
+      <label class="form-label">납부자</label>
+      <select class="form-select" id="f-dep-payer">
+        <option value="J">J</option>
+        <option value="Y">Y</option>
+        <option value="공통">공통</option>
+      </select>
+    </div>
     <div class="form-group"><label class="form-label">총 보증금 (만원, 선택)</label><input class="form-input" type="number" id="f-dep-total" placeholder="예: 15000"></div>
     <div class="form-row2">
-      <div class="form-group"><label class="form-label">A 현금 부담 계획 (만원)</label><input class="form-input" type="number" id="f-dep-a" placeholder="0"></div>
-      <div class="form-group"><label class="form-label">B 현금 부담 계획 (만원)</label><input class="form-input" type="number" id="f-dep-b" placeholder="0"></div>
+      <div class="form-group"><label class="form-label">J 현금 부담 계획 (만원)</label><input class="form-input" type="number" id="f-dep-a" placeholder="0"></div>
+      <div class="form-group"><label class="form-label">Y 현금 부담 계획 (만원)</label><input class="form-input" type="number" id="f-dep-b" placeholder="0"></div>
     </div>
     <div class="form-group"><label class="form-label">메모 (은행명, 금리 등)</label><input class="form-input" id="f-dep-memo" placeholder="예: 국민은행 / 연 3.5%"></div>
     <div class="form-group">
@@ -340,6 +348,14 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
       <div class="form-group"><label class="form-label">항목명</label><input class="form-input" id="f-util-name" placeholder="예: 전기요금"></div>
     </div>
     <div class="form-group"><label class="form-label">금액 (원)</label><input class="form-input" type="number" id="f-util-amount" placeholder="0"></div>
+    <div class="form-group">
+      <label class="form-label">납부자</label>
+      <select class="form-select" id="f-util-payer">
+        <option value="J">J</option>
+        <option value="Y">Y</option>
+        <option value="공통">공통</option>
+      </select>
+    </div>
     <div class="form-group">
       <label class="form-label">종류</label>
       <select class="form-select" id="f-util-type">
@@ -391,11 +407,19 @@ html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSys
       <div class="form-group"><label class="form-label">구매일</label><input class="form-input" type="date" id="f-item-date"></div>
       <div class="form-group"><label class="form-label">금액 (만원)</label><input class="form-input" type="number" id="f-item-price" placeholder="0"></div>
     </div>
+    <div class="form-group">
+      <label class="form-label">결제자</label>
+      <select class="form-select" id="f-item-payer">
+        <option value="J">J</option>
+        <option value="Y">Y</option>
+        <option value="공통">공통</option>
+      </select>
+    </div>
     <div class="form-group"><label class="form-label">소유</label>
       <select class="form-select" id="f-item-owner">
-        <option value="A">A 소유</option>
-        <option value="B">B 소유</option>
-        <option value="공동">공동 구매</option>
+        <option value="J">J 소유</option>
+        <option value="Y">Y 소유</option>
+        <option value="공통">공통 소유</option>
       </select>
     </div>
     <div class="form-group"><label class="form-label">메모 (보증기간 등)</label><input class="form-input" id="f-item-memo" placeholder="예: 보증기간 2년"></div>
@@ -610,7 +634,7 @@ function renderDep(items) {
         <div class="row-dot" style="background:${isLoan ? 'var(--danger)' : 'var(--dd)'}"></div>
         <div class="row-main">
           <div class="row-label">[${label}] ${i.name || ''}</div>
-          <div class="row-meta">${i.date||''} ${i.memo ? '· '+i.memo : ''} ${i.repeat==='monthly'?'· 매월':''}</div>
+          <div class="row-meta">${i.date||''} · ${i.payer || '미지정'} 납부 ${i.memo ? '· '+i.memo : ''} ${i.repeat==='monthly'?'· 매월':''}</div>
         </div>
         <div class="row-right">
           <div class="row-val">${amount}</div>
@@ -634,7 +658,7 @@ function renderUtil(items) {
       <div class="row-dot" style="background:var(--du)"></div>
       <div class="row-main">
         <div class="row-label">${i.type||''} ${i.name||''}</div>
-        <div class="row-meta">${i.date||''} 정산 ${i.memo ? '· '+i.memo : ''}</div>
+        <div class="row-meta">${i.date||''} 정산 · ${i.payer || '미지정'} 납부 ${i.memo ? '· '+i.memo : ''}</div>
       </div>
       <div class="row-right">
         <div class="row-val">${fmt(i.amount||0)}원</div>
@@ -665,28 +689,32 @@ function renderRule(items) {
 function renderItem(items) {
   const el = document.getElementById('item-list');
   if (!items.length) { el.innerHTML = '<div class="empty-state">아직 항목이 없어요 🐾</div>'; return; }
-  let aSum = 0, bSum = 0;
+  let jSum = 0, ySum = 0;
   items.forEach(i => {
     const p = Number(i.price||0);
-    if (i.owner === 'A') aSum += p;
-    else if (i.owner === 'B') bSum += p;
-    else { aSum += Math.round(p/2); bSum += Math.round(p/2); }
+    if (i.owner === 'J') jSum += p;
+    else if (i.owner === 'Y') ySum += p;
+    else { jSum += Math.round(p/2); ySum += Math.round(p/2); }
   });
-  document.getElementById('i-a').textContent = fmt(aSum)+'만';
-  document.getElementById('i-b').textContent = fmt(bSum)+'만';
-  const colorMap = { A: 'var(--dd)', B: 'var(--du)', '공동': 'var(--di)' };
+  document.getElementById('i-j').textContent = fmt(jSum)+'만';
+  document.getElementById('i-y').textContent = fmt(ySum)+'만';
+  const colorMap = { J: 'var(--dd)', Y: 'var(--du)', '공통': 'var(--di)', A: 'var(--dd)', B: 'var(--du)', '공동': 'var(--di)' };
   el.innerHTML = '<div class="list-card">' +
-    items.map(i => `<div class="list-row">
-      <div class="row-dot" style="background:${colorMap[i.owner]||'var(--th)'}"></div>
-      <div class="row-main">
-        <div class="row-label">${i.name}</div>
-        <div class="row-meta">${i.owner} 소유 · ${i.date||''} ${i.memo ? '· '+i.memo : ''}</div>
-      </div>
-      <div class="row-right">
-        <div class="row-val">${i.price ? fmt(i.price)+'만' : ''}</div>
-        <button class="del-btn" onclick="deleteItem('items','${i.id}',loadItem)">✕</button>
-      </div>
-    </div>`).join('') + '</div>';
+    items.map(i => {
+      const owner = i.owner === 'A' ? 'J' : (i.owner === 'B' ? 'Y' : (i.owner === '공동' ? '공통' : i.owner));
+      const payer = i.payer || '미지정';
+      return `<div class="list-row">
+        <div class="row-dot" style="background:${colorMap[i.owner]||'var(--th)'}"></div>
+        <div class="row-main">
+          <div class="row-label">${i.name}</div>
+          <div class="row-meta">${owner || '미지정'} 소유 · ${payer} 결제 · ${i.date||''} ${i.memo ? '· '+i.memo : ''}</div>
+        </div>
+        <div class="row-right">
+          <div class="row-val">${i.price ? fmt(i.price)+'만' : ''}</div>
+          <button class="del-btn" onclick="deleteItem('items','${i.id}',loadItem)">✕</button>
+        </div>
+      </div>`;
+    }).join('') + '</div>';
 }
 
 // ──────────────────────────────────────────
@@ -856,6 +884,7 @@ async function submitForm(type) {
         name,
         date:   document.getElementById('f-dep-date').value,
         amount: document.getElementById('f-dep-amount').value,
+        payer:  document.getElementById('f-dep-payer').value,
         total:  document.getElementById('f-dep-total').value,
         aShare: document.getElementById('f-dep-a').value,
         bShare: document.getElementById('f-dep-b').value,
@@ -872,6 +901,7 @@ async function submitForm(type) {
         date:   document.getElementById('f-util-date').value,
         amount: Number(amount),
         type:   document.getElementById('f-util-type').value,
+        payer:  document.getElementById('f-util-payer').value,
         memo:   document.getElementById('f-util-memo').value,
         createdAt: new Date().toISOString()
       };
@@ -896,6 +926,7 @@ async function submitForm(type) {
         date:  document.getElementById('f-item-date').value,
         price: document.getElementById('f-item-price').value,
         owner: document.getElementById('f-item-owner').value,
+        payer: document.getElementById('f-item-payer').value,
         memo:  document.getElementById('f-item-memo').value,
         createdAt: new Date().toISOString()
       };
@@ -915,7 +946,7 @@ window.submitForm = submitForm;
 // PWA 서비스워커 등록
 // ──────────────────────────────────────────
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(console.error);
+  navigator.serviceWorker.register('./sw.js').catch(console.error);
 }
 </script>
 
