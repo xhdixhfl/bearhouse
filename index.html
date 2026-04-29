@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#E8845A">
+<title>곰돌집</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --br:#7C4E2D;--acc:#E8845A;--accs:#FDE8DA;
+  --bg:#FDF6EE;--card:#FFFFFF;--bd:#EDD9CA;
+  --tm:#3D2B1F;--ts:#9B7B6A;--th:#C4A898;
+  --dd:#378ADD;--du:#1D9E75;--dr:#BA7517;--di:#993356;
+  --danger:#D4524A;
+}
+html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}
+.hidden{display:none!important}
+
+/* ── 잠금 화면 ── */
+#lock-screen{
+  position:fixed;inset:0;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  z-index:9999;padding:40px 24px;
+}
+.lock-bear svg{width:72px;height:72px}
+.lock-title{font-size:22px;font-weight:500;color:var(--br)}
+.lock-sub{font-size:14px;color:var(--ts);text-align:center}
+.lock-input{
+  width:100%;max-width:280px;padding:14px 16px;
+  font-size:18px;letter-spacing:6px;text-align:center;
+  border:0.5px solid var(--bd);border-radius:12px;
+  background:var(--card);color:var(--tm);outline:none;
+}
+.lock-input:focus{border-color:var(--acc)}
+.lock-btn{
+  width:100%;max-width:280px;padding:14px;
+  font-size:15px;font-weight:500;
+  background:var(--acc);color:#fff;border:none;border-radius:12px;cursor:pointer;
+}
+.lock-err{font-size:13px;color:var(--danger)}
+
+/* ── 앱 레이아웃 ── */
+#app{display:flex;flex-direction:column;height:100%;max-width:480px;margin:0 auto}
+.topbar{
+  padding:12px 16px 10px;background:var(--card);
+  border-bottom:0.5px solid var(--bd);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.bear-row{display:flex;align-items:center;gap:8px}
+.app-name{font-size:17px;font-weight:500;color:var(--br)}
+.app-sub{font-size:11px;color:var(--ts)}
+.pill{font-size:11px;color:var(--ts);background:var(--accs);padding:4px 10px;border-radius:20px;border:0.5px solid var(--bd)}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+
+/* ── 캘린더 ── */
+.cal-wrap{background:var(--card);border-bottom:0.5px solid var(--bd)}
+.month-nav{display:flex;align-items:center;padding:10px 16px 6px}
+.mnbtn{width:28px;height:28px;border-radius:50%;border:0.5px solid var(--bd);background:none;cursor:pointer;color:var(--ts);font-size:15px}
+.mlabel{flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--tm)}
+.cal-head{display:grid;grid-template-columns:repeat(7,1fr);padding:0 8px}
+.chl{text-align:center;font-size:11px;color:var(--th);padding:3px 0}
+.chl.s{color:var(--danger)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);padding:0 8px 8px;gap:1px}
+.cc{display:flex;flex-direction:column;align-items:center;padding:3px 0;border-radius:8px;cursor:pointer;min-height:36px;border:0.5px solid transparent}
+.cc:active{background:var(--accs)}
+.cc.sel{background:var(--accs);border-color:var(--acc)}
+.cc.today .dn{background:var(--acc);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+.dn{font-size:12px;color:var(--tm);width:22px;height:22px;display:flex;align-items:center;justify-content:center}
+.dn.s{color:var(--danger)}.dn.o{color:var(--th)}
+.dots{display:flex;gap:2px;margin-top:1px;justify-content:center;flex-wrap:wrap}
+.dot{width:5px;height:5px;border-radius:50%}
+.d-dep{background:var(--dd)}.d-util{background:var(--du)}.d-rule{background:var(--dr)}.d-item{background:var(--di)}
+.legend{display:flex;gap:12px;padding:6px 16px 8px;background:var(--card);border-bottom:0.5px solid var(--bd)}
+.li{display:flex;align-items:center;gap:3px;font-size:11px;color:var(--ts)}
+.ld{width:6px;height:6px;border-radius:50%}
+
+/* ── 날짜 패널 ── */
+.day-panel{margin:10px 12px;background:var(--card);border-radius:12px;border:0.5px solid var(--bd);overflow:hidden}
+.dp-hd{padding:10px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.dp-date{font-size:13px;font-weight:500;color:var(--br)}
+.dp-hint{font-size:12px;color:var(--ts)}
+.dp-body{border-top:0.5px solid var(--bd)}
+.exist-sec{padding:8px 12px;border-bottom:0.5px solid var(--bd)}
+.exist-title{font-size:11px;color:var(--th);margin-bottom:6px}
+.exist-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid var(--bd)}
+.exist-row:last-child{border-bottom:none}
+.exist-left{display:flex;align-items:center;gap:6px}
+.edot{width:7px;height:7px;border-radius:50%}
+.elabel{font-size:13px;color:var(--tm)}
+.esub{font-size:11px;color:var(--ts)}
+.cat-row{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:0.5px solid var(--bd)}
+.cat-row:last-child{border-bottom:none}
+.cat-row:active{background:var(--accs)}
+.cat-ic{font-size:15px;width:24px;text-align:center}
+.cat-lbl{font-size:13px;color:var(--tm)}
+.cat-sub{font-size:11px;color:var(--ts)}
+.cat-arr{font-size:13px;color:var(--th);margin-left:auto}
+
+/* ── 탭 컨텐츠 ── */
+.tab-content{padding:12px}
+.sec-title{font-size:11px;color:var(--ts);font-weight:500;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px;margin-top:4px}
+.mrow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.mc{background:#FDF0E6;border-radius:10px;padding:10px 12px}
+.mc-l{font-size:11px;color:var(--ts);margin-bottom:3px}
+.mc-v{font-size:17px;font-weight:500;color:var(--tm)}
+.list-card{background:var(--card);border-radius:12px;border:0.5px solid var(--bd);overflow:hidden;margin-bottom:10px}
+.list-row{display:flex;align-items:center;padding:10px 12px;border-bottom:0.5px solid var(--bd);gap:8px}
+.list-row:last-child{border-bottom:none}
+.row-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.row-main{flex:1;min-width:0}
+.row-label{font-size:13px;color:var(--tm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row-meta{font-size:11px;color:var(--ts);margin-top:1px}
+.row-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.row-val{font-size:13px;font-weight:500;color:var(--tm)}
+.del-btn{width:24px;height:24px;border-radius:6px;border:0.5px solid #F0C0C0;background:#FFF5F5;color:var(--danger);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.add-btn{width:100%;padding:12px;font-size:13px;font-weight:500;background:var(--acc);color:#fff;border:none;border-radius:10px;cursor:pointer;margin-top:4px}
+.empty-state{text-align:center;padding:28px 16px;color:var(--th);font-size:13px}
+
+/* ── 모달 폼 ── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:flex;align-items:flex-end;justify-content:center}
+.modal{background:var(--card);border-radius:20px 20px 0 0;padding:20px 16px 36px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto}
+.modal-title{font-size:15px;font-weight:500;color:var(--tm);margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.modal-close{font-size:18px;color:var(--ts);cursor:pointer;width:28px;height:28px;display:flex;align-items:center;justify-content:center}
+.form-group{margin-bottom:12px}
+.form-label{font-size:12px;color:var(--ts);margin-bottom:4px;display:block}
+.form-input{width:100%;padding:10px 12px;font-size:14px;border:0.5px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tm);outline:none}
+.form-input:focus{border-color:var(--acc)}
+.form-row2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.form-select{width:100%;padding:10px 12px;font-size:14px;border:0.5px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tm);outline:none}
+.form-submit{width:100%;padding:12px;font-size:14px;font-weight:500;background:var(--acc);color:#fff;border:none;border-radius:10px;cursor:pointer;margin-top:8px}
+.repeat-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.day-chip{padding:6px 10px;border-radius:20px;font-size:12px;border:0.5px solid var(--bd);background:var(--bg);color:var(--ts);cursor:pointer}
+.day-chip.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+
+/* ── 하단 탭 ── */
+.bnav{background:var(--card);border-top:0.5px solid var(--bd);display:flex;padding:6px 0 max(8px,env(safe-area-inset-bottom));flex-shrink:0}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:3px 0}
+.ni-iw{padding:3px 12px;border-radius:10px}
+.ni-iw.act{background:var(--accs)}
+.ni-ic{font-size:20px;line-height:1.3;text-align:center}
+.ni-lb{font-size:10px;color:var(--ts)}
+.ni.act .ni-lb{color:var(--acc);font-weight:500}
+
+/* ── 로딩 ── */
+.loading{text-align:center;padding:40px;color:var(--ts);font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- 잠금 화면 -->
+<div id="lock-screen">
+  <div class="lock-bear">
+    <svg viewBox="0 0 80 80" fill="none">
+      <circle cx="22" cy="22" r="16" fill="#C8956C"/>
+      <circle cx="58" cy="22" r="16" fill="#C8956C"/>
+      <ellipse cx="40" cy="50" rx="28" ry="24" fill="#C8956C"/>
+      <ellipse cx="40" cy="57" rx="15" ry="11" fill="#E8B08A"/>
+      <circle cx="31" cy="44" r="5" fill="#3D1F0D"/>
+      <circle cx="49" cy="44" r="5" fill="#3D1F0D"/>
+      <ellipse cx="40" cy="53" rx="5" ry="4" fill="#3D1F0D"/>
+      <circle cx="32.5" cy="42.5" r="1.8" fill="#fff"/>
+      <circle cx="50.5" cy="42.5" r="1.8" fill="#fff"/>
+    </svg>
+  </div>
+  <div class="lock-title">곰돌집 🏠</div>
+  <div class="lock-sub">비밀번호를 입력해주세요<br>두 분만 아는 비밀번호로 접근하세요</div>
+  <input class="lock-input" type="password" id="pw-input" placeholder="••••" maxlength="20"
+    onkeydown="if(event.key==='Enter')tryUnlock()">
+  <button class="lock-btn" onclick="tryUnlock()">입력</button>
+  <div class="lock-err hidden" id="pw-err">비밀번호가 틀렸어요 🐾</div>
+</div>
+
+<!-- 앱 본체 -->
+<div id="app" class="hidden">
+  <div class="topbar">
+    <div class="bear-row">
+      <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
+        <circle cx="10" cy="10" r="7" fill="#C8956C"/>
+        <circle cx="26" cy="10" r="7" fill="#C8956C"/>
+        <ellipse cx="18" cy="22" rx="13" ry="11" fill="#C8956C"/>
+        <ellipse cx="18" cy="25" rx="7" ry="5" fill="#E8B08A"/>
+        <circle cx="14" cy="19" r="2.5" fill="#3D1F0D"/>
+        <circle cx="22" cy="19" r="2.5" fill="#3D1F0D"/>
+        <ellipse cx="18" cy="23" rx="2.5" ry="1.8" fill="#3D1F0D"/>
+        <circle cx="14.8" cy="18.3" r=".8" fill="#fff"/>
+        <circle cx="22.8" cy="18.3" r=".8" fill="#fff"/>
+      </svg>
+      <div>
+        <div class="app-name">곰돌집</div>
+        <div class="app-sub" id="topbar-sub"></div>
+      </div>
+    </div>
+    <div class="pill">A · B</div>
+  </div>
+
+  <div class="scroll" id="scroll-area">
+
+    <!-- 홈 (캘린더) -->
+    <div id="view-home">
+      <div class="cal-wrap">
+        <div class="month-nav">
+          <button class="mnbtn" onclick="chMonth(-1)">‹</button>
+          <div class="mlabel" id="mlabel"></div>
+          <button class="mnbtn" onclick="chMonth(1)">›</button>
+        </div>
+        <div class="cal-head">
+          <div class="chl s">일</div><div class="chl">월</div><div class="chl">화</div>
+          <div class="chl">수</div><div class="chl">목</div><div class="chl">금</div><div class="chl">토</div>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+      <div class="legend">
+        <div class="li"><div class="ld" style="background:var(--dd)"></div>보증금</div>
+        <div class="li"><div class="ld" style="background:var(--du)"></div>공과금</div>
+        <div class="li"><div class="ld" style="background:var(--dr)"></div>규칙</div>
+        <div class="li"><div class="ld" style="background:var(--di)"></div>가전</div>
+      </div>
+      <div class="day-panel hidden" id="day-panel">
+        <div class="dp-hd" onclick="toggleCat()">
+          <div class="dp-date" id="dp-lbl">날짜 선택</div>
+          <div class="dp-hint" id="dp-hint">+ 추가하기 ↓</div>
+        </div>
+        <div class="dp-body hidden" id="dp-body">
+          <div id="exist-sec" class="exist-sec hidden">
+            <div class="exist-title">이 날의 항목</div>
+            <div id="exist-list"></div>
+          </div>
+          <div id="cat-list">
+            <div class="cat-row" onclick="openModal('dep')"><div class="cat-ic">🏦</div><div><div class="cat-lbl">보증금 / 대출</div><div class="cat-sub">잔금일, 납입일 기록</div></div><div class="cat-arr">›</div></div>
+            <div class="cat-row" onclick="openModal('util')"><div class="cat-ic">💡</div><div><div class="cat-lbl">공과금 정산</div><div class="cat-sub">전기·가스·수도·인터넷</div></div><div class="cat-arr">›</div></div>
+            <div class="cat-row" onclick="openModal('rule')"><div class="cat-ic">📋</div><div><div class="cat-lbl">생활 규칙</div><div class="cat-sub">반복 요일 설정 가능</div></div><div class="cat-arr">›</div></div>
+            <div class="cat-row" onclick="openModal('item')"><div class="cat-ic">📦</div><div><div class="cat-lbl">가전 / 비품</div><div class="cat-sub">구매일, 금액, 소유자</div></div><div class="cat-arr">›</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 보증금 탭 -->
+    <div id="view-dep" class="hidden tab-content">
+      <div class="mrow" id="dep-metrics">
+        <div class="mc"><div class="mc-l">총 보증금</div><div class="mc-v" id="m-total">—</div></div>
+        <div class="mc"><div class="mc-l">대출 잔액</div><div class="mc-v" id="m-loan">—</div></div>
+        <div class="mc"><div class="mc-l">A 부담</div><div class="mc-v" id="m-a">—</div></div>
+        <div class="mc"><div class="mc-l">B 부담</div><div class="mc-v" id="m-b">—</div></div>
+      </div>
+      <div class="sec-title">보증금 일정</div>
+      <div id="dep-list"><div class="loading">불러오는 중...</div></div>
+      <button class="add-btn" onclick="openModal('dep')">+ 보증금 항목 추가</button>
+    </div>
+
+    <!-- 공과금 탭 -->
+    <div id="view-util" class="hidden tab-content">
+      <div class="mrow">
+        <div class="mc"><div class="mc-l">이번 달 합계</div><div class="mc-v" id="u-total">—</div></div>
+        <div class="mc"><div class="mc-l">1인당</div><div class="mc-v" id="u-per">—</div></div>
+      </div>
+      <div class="sec-title">공과금 내역</div>
+      <div id="util-list"><div class="loading">불러오는 중...</div></div>
+      <button class="add-btn" onclick="openModal('util')">+ 공과금 추가</button>
+    </div>
+
+    <!-- 규칙 탭 -->
+    <div id="view-rule" class="hidden tab-content">
+      <div class="sec-title">생활 규칙</div>
+      <div id="rule-list"><div class="loading">불러오는 중...</div></div>
+      <button class="add-btn" onclick="openModal('rule')">+ 규칙 추가</button>
+    </div>
+
+    <!-- 가전/비품 탭 -->
+    <div id="view-item" class="hidden tab-content">
+      <div class="mrow">
+        <div class="mc"><div class="mc-l">A 자산</div><div class="mc-v" id="i-a">—</div></div>
+        <div class="mc"><div class="mc-l">B 자산</div><div class="mc-v" id="i-b">—</div></div>
+      </div>
+      <div class="sec-title">가전 · 비품 목록</div>
+      <div id="item-list"><div class="loading">불러오는 중...</div></div>
+      <button class="add-btn" onclick="openModal('item')">+ 가전/비품 추가</button>
+    </div>
+
+  </div>
+
+  <!-- 하단 탭바 -->
+  <div class="bnav">
+    <div class="ni" id="ni-dep" onclick="goTab('dep')"><div class="ni-iw" id="niw-dep"><div class="ni-ic">🏦</div></div><div class="ni-lb">보증금</div></div>
+    <div class="ni" id="ni-util" onclick="goTab('util')"><div class="ni-iw" id="niw-util"><div class="ni-ic">💡</div></div><div class="ni-lb">공과금</div></div>
+    <div class="ni act" id="ni-home" onclick="goTab('home')"><div class="ni-iw act" id="niw-home"><div class="ni-ic">🐻</div></div><div class="ni-lb">홈</div></div>
+    <div class="ni" id="ni-rule" onclick="goTab('rule')"><div class="ni-iw" id="niw-rule"><div class="ni-ic">📋</div></div><div class="ni-lb">규칙</div></div>
+    <div class="ni" id="ni-item" onclick="goTab('item')"><div class="ni-iw" id="niw-item"><div class="ni-ic">📦</div></div><div class="ni-lb">가전</div></div>
+  </div>
+</div>
+
+<!-- 모달 폼들 -->
+<div class="modal-backdrop hidden" id="modal-backdrop" onclick="closeModalBackdrop(event)">
+
+  <!-- 보증금 추가 모달 -->
+  <div class="modal hidden" id="modal-dep">
+    <div class="modal-title">🏦 보증금 / 대출 추가 <span class="modal-close" onclick="closeModal()">✕</span></div>
+    <div class="form-group"><label class="form-label">항목명</label><input class="form-input" id="f-dep-name" placeholder="예: 잔금 납입, 월 이자"></div>
+    <div class="form-row2">
+      <div class="form-group"><label class="form-label">날짜</label><input class="form-input" type="date" id="f-dep-date"></div>
+      <div class="form-group"><label class="form-label">금액 (원)</label><input class="form-input" type="number" id="f-dep-amount" placeholder="0"></div>
+    </div>
+    <div class="form-group"><label class="form-label">총 보증금 (만원, 선택)</label><input class="form-input" type="number" id="f-dep-total" placeholder="예: 15000"></div>
+    <div class="form-row2">
+      <div class="form-group"><label class="form-label">A 부담 (만원)</label><input class="form-input" type="number" id="f-dep-a" placeholder="0"></div>
+      <div class="form-group"><label class="form-label">B 부담 (만원)</label><input class="form-input" type="number" id="f-dep-b" placeholder="0"></div>
+    </div>
+    <div class="form-group"><label class="form-label">메모 (은행명, 금리 등)</label><input class="form-input" id="f-dep-memo" placeholder="예: 국민은행 / 연 3.5%"></div>
+    <div class="form-group">
+      <label class="form-label">반복</label>
+      <select class="form-select" id="f-dep-repeat">
+        <option value="none">반복 없음</option>
+        <option value="monthly">매월 반복</option>
+      </select>
+    </div>
+    <button class="form-submit" onclick="submitForm('dep')">저장하기 🐾</button>
+  </div>
+
+  <!-- 공과금 추가 모달 -->
+  <div class="modal hidden" id="modal-util">
+    <div class="modal-title">💡 공과금 추가 <span class="modal-close" onclick="closeModal()">✕</span></div>
+    <div class="form-row2">
+      <div class="form-group"><label class="form-label">정산 날짜</label><input class="form-input" type="date" id="f-util-date"></div>
+      <div class="form-group"><label class="form-label">항목명</label><input class="form-input" id="f-util-name" placeholder="예: 전기요금"></div>
+    </div>
+    <div class="form-group"><label class="form-label">금액 (원)</label><input class="form-input" type="number" id="f-util-amount" placeholder="0"></div>
+    <div class="form-group">
+      <label class="form-label">종류</label>
+      <select class="form-select" id="f-util-type">
+        <option value="전기">전기</option>
+        <option value="가스">가스</option>
+        <option value="수도">수도</option>
+        <option value="인터넷">인터넷</option>
+        <option value="기타">기타</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">메모 (선택)</label><input class="form-input" id="f-util-memo" placeholder="특이사항"></div>
+    <button class="form-submit" onclick="submitForm('util')">저장하기 🐾</button>
+  </div>
+
+  <!-- 규칙 추가 모달 -->
+  <div class="modal hidden" id="modal-rule">
+    <div class="modal-title">📋 생활 규칙 추가 <span class="modal-close" onclick="closeModal()">✕</span></div>
+    <div class="form-group"><label class="form-label">규칙 내용</label><input class="form-input" id="f-rule-content" placeholder="예: 청소기 돌리기"></div>
+    <div class="form-group"><label class="form-label">카테고리</label>
+      <select class="form-select" id="f-rule-cat">
+        <option>청소</option><option>분리수거</option><option>소음</option>
+        <option>손님</option><option>주방</option><option>욕실</option><option>기타</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">날짜 (일회성일 경우)</label>
+      <input class="form-input" type="date" id="f-rule-date">
+    </div>
+    <div class="form-group">
+      <label class="form-label">반복 요일 (복수 선택 가능)</label>
+      <div class="repeat-row" id="repeat-days">
+        <div class="day-chip" onclick="toggleDay(this)" data-day="일">일</div>
+        <div class="day-chip" onclick="toggleDay(this)" data-day="월">월</div>
+        <div class="day-chip" onclick="toggleDay(this)" data-day="화">화</div>
+        <div class="day-chip" onclick="toggleDay(this)" data-day="수">수</div>
+        <div class="day-chip" onclick="toggleDay(this)" data-day="목">목</div>
+        <div class="day-chip" onclick="toggleDay(this)" data-day="금">금</div>
+        <div class="day-chip" onclick="toggleDay(this)" data-day="토">토</div>
+      </div>
+    </div>
+    <button class="form-submit" onclick="submitForm('rule')">저장하기 🐾</button>
+  </div>
+
+  <!-- 가전/비품 추가 모달 -->
+  <div class="modal hidden" id="modal-item">
+    <div class="modal-title">📦 가전 / 비품 추가 <span class="modal-close" onclick="closeModal()">✕</span></div>
+    <div class="form-group"><label class="form-label">품목명</label><input class="form-input" id="f-item-name" placeholder="예: 냉장고, 청소기"></div>
+    <div class="form-row2">
+      <div class="form-group"><label class="form-label">구매일</label><input class="form-input" type="date" id="f-item-date"></div>
+      <div class="form-group"><label class="form-label">금액 (만원)</label><input class="form-input" type="number" id="f-item-price" placeholder="0"></div>
+    </div>
+    <div class="form-group"><label class="form-label">소유</label>
+      <select class="form-select" id="f-item-owner">
+        <option value="A">A 소유</option>
+        <option value="B">B 소유</option>
+        <option value="공동">공동 구매</option>
+      </select>
+    </div>
+    <div class="form-group"><label class="form-label">메모 (보증기간 등)</label><input class="form-input" id="f-item-memo" placeholder="예: 보증기간 2년"></div>
+    <button class="form-submit" onclick="submitForm('item')">저장하기 🐾</button>
+  </div>
+
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, getDocs,
+  deleteDoc, doc, query, orderBy, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ── firebase-config.js에서 불러오기 ──
+import { firebaseConfig, APP_PASSWORD } from "./firebase-config.js";
+
+// ── 초기화 ──
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// ── 전역 노출 ──
+window._db  = db;
+window._col = collection;
+window._add = addDoc;
+window._get = getDocs;
+window._del = deleteDoc;
+window._doc = doc;
+window._q   = query;
+window._ord = orderBy;
+window._snap= onSnapshot;
+window.APP_PASSWORD = APP_PASSWORD;
+
+// ── 앱 시작 ──
+window.initApp();
+</script>
+
+<script>
+const TODAY = new Date();
+let cY = TODAY.getFullYear(), cM = TODAY.getMonth(), selD = null, catOpen = false;
+const DAYS = ['일','월','화','수','목','금','토'];
+let calEvents = {}; // { "YYYY-M-D": ['dep','util',...] }
+
+// ──────────────────────────────────────────
+// 잠금 화면
+// ──────────────────────────────────────────
+function tryUnlock() {
+  const val = document.getElementById('pw-input').value;
+  if (val === window.APP_PASSWORD) {
+    document.getElementById('lock-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    loadAll();
+  } else {
+    document.getElementById('pw-err').classList.remove('hidden');
+    document.getElementById('pw-input').value = '';
+  }
+}
+window.tryUnlock = tryUnlock;
+
+// ──────────────────────────────────────────
+// 앱 초기화 (Firebase 로드 후 호출됨)
+// ──────────────────────────────────────────
+window.initApp = function() {
+  buildCal();
+  updateTopbarSub();
+};
+
+// ──────────────────────────────────────────
+// 데이터 로드
+// ──────────────────────────────────────────
+async function loadAll() {
+  buildCal();
+  await Promise.all([loadDep(), loadUtil(), loadRule(), loadItem()]);
+}
+
+async function loadDep() {
+  const snap = await window._get(window._col(window._db, 'deposits'));
+  const items = snap.docs.map(d => ({id: d.id, ...d.data()}));
+  renderDep(items);
+  updateCalEvents('dep', items);
+}
+
+async function loadUtil() {
+  const snap = await window._get(window._col(window._db, 'utilities'));
+  const items = snap.docs.map(d => ({id: d.id, ...d.data()}));
+  renderUtil(items);
+  updateCalEvents('util', items);
+}
+
+async function loadRule() {
+  const snap = await window._get(window._col(window._db, 'rules'));
+  const items = snap.docs.map(d => ({id: d.id, ...d.data()}));
+  renderRule(items);
+  updateCalEvents('rule', items);
+}
+
+async function loadItem() {
+  const snap = await window._get(window._col(window._db, 'items'));
+  const items = snap.docs.map(d => ({id: d.id, ...d.data()}));
+  renderItem(items);
+  updateCalEvents('item', items);
+}
+
+function updateCalEvents(type, items) {
+  items.forEach(item => {
+    const date = item.date;
+    if (!date) return;
+    const [y, m, d] = date.split('-');
+    const key = `${y}-${parseInt(m)}-${parseInt(d)}`;
+    if (!calEvents[key]) calEvents[key] = [];
+    if (!calEvents[key].includes(type)) calEvents[key].push(type);
+  });
+  // 반복 규칙 처리
+  if (type === 'rule') {
+    items.filter(i => i.repeatDays && i.repeatDays.length).forEach(item => {
+      markRepeatDays(item.repeatDays);
+    });
+  }
+  buildCal();
+}
+
+function markRepeatDays(days) {
+  const daysOfWeek = ['일','월','화','수','목','금','토'];
+  const daysInMonth = new Date(cY, cM + 1, 0).getDate();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dow = new Date(cY, cM, d).getDay();
+    if (days.includes(daysOfWeek[dow])) {
+      const key = `${cY}-${cM+1}-${d}`;
+      if (!calEvents[key]) calEvents[key] = [];
+      if (!calEvents[key].includes('rule')) calEvents[key].push('rule');
+    }
+  }
+}
+
+// ──────────────────────────────────────────
+// 렌더링
+// ──────────────────────────────────────────
+const fmt = n => Number(n).toLocaleString('ko-KR');
+
+function renderDep(items) {
+  const el = document.getElementById('dep-list');
+  if (!items.length) { el.innerHTML = '<div class="empty-state">아직 항목이 없어요 🐾</div>'; return; }
+  let totalSum = 0, aSum = 0, bSum = 0, loanSum = 0;
+  items.forEach(i => {
+    if (i.total) totalSum = Math.max(totalSum, Number(i.total));
+    if (i.aShare) aSum = Math.max(aSum, Number(i.aShare));
+    if (i.bShare) bSum = Math.max(bSum, Number(i.bShare));
+    if (i.amount) loanSum += Number(i.amount);
+  });
+  document.getElementById('m-total').textContent = totalSum ? fmt(totalSum)+'만' : '—';
+  document.getElementById('m-loan').textContent  = loanSum  ? fmt(loanSum)+'원'  : '—';
+  document.getElementById('m-a').textContent     = aSum     ? fmt(aSum)+'만'    : '—';
+  document.getElementById('m-b').textContent     = bSum     ? fmt(bSum)+'만'    : '—';
+  el.innerHTML = '<div class="list-card">' +
+    items.map(i => `<div class="list-row">
+      <div class="row-dot" style="background:var(--dd)"></div>
+      <div class="row-main">
+        <div class="row-label">${i.name}</div>
+        <div class="row-meta">${i.date||''} ${i.memo ? '· '+i.memo : ''} ${i.repeat==='monthly'?'· 매월':''}</div>
+      </div>
+      <div class="row-right">
+        <div class="row-val">${i.amount ? fmt(i.amount)+'원' : ''}</div>
+        <button class="del-btn" onclick="deleteItem('deposits','${i.id}',loadDep)">✕</button>
+      </div>
+    </div>`).join('') + '</div>';
+}
+
+function renderUtil(items) {
+  const el = document.getElementById('util-list');
+  if (!items.length) { el.innerHTML = '<div class="empty-state">아직 항목이 없어요 🐾</div>'; return; }
+  const thisMonth = `${cY}-${String(cM+1).padStart(2,'0')}`;
+  const thisItems = items.filter(i => i.date && i.date.startsWith(thisMonth));
+  const total = thisItems.reduce((s, i) => s + Number(i.amount||0), 0);
+  document.getElementById('u-total').textContent = total ? fmt(total)+'원' : '—';
+  document.getElementById('u-per').textContent   = total ? fmt(Math.round(total/2))+'원' : '—';
+  const sorted = [...items].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  el.innerHTML = '<div class="list-card">' +
+    sorted.map(i => `<div class="list-row">
+      <div class="row-dot" style="background:var(--du)"></div>
+      <div class="row-main">
+        <div class="row-label">${i.type||''} ${i.name||''}</div>
+        <div class="row-meta">${i.date||''} 정산 ${i.memo ? '· '+i.memo : ''}</div>
+      </div>
+      <div class="row-right">
+        <div class="row-val">${fmt(i.amount||0)}원</div>
+        <button class="del-btn" onclick="deleteItem('utilities','${i.id}',loadUtil)">✕</button>
+      </div>
+    </div>`).join('') + '</div>';
+}
+
+function renderRule(items) {
+  const el = document.getElementById('rule-list');
+  if (!items.length) { el.innerHTML = '<div class="empty-state">아직 규칙이 없어요 🐾</div>'; return; }
+  el.innerHTML = '<div class="list-card">' +
+    items.map(i => {
+      const repeat = i.repeatDays && i.repeatDays.length ? `매주 ${i.repeatDays.join('·')}` : (i.date || '고정 규칙');
+      return `<div class="list-row">
+        <div class="row-dot" style="background:var(--dr)"></div>
+        <div class="row-main">
+          <div class="row-label">${i.content}</div>
+          <div class="row-meta">[${i.category||'기타'}] ${repeat}</div>
+        </div>
+        <div class="row-right">
+          <button class="del-btn" onclick="deleteItem('rules','${i.id}',loadRule)">✕</button>
+        </div>
+      </div>`;
+    }).join('') + '</div>';
+}
+
+function renderItem(items) {
+  const el = document.getElementById('item-list');
+  if (!items.length) { el.innerHTML = '<div class="empty-state">아직 항목이 없어요 🐾</div>'; return; }
+  let aSum = 0, bSum = 0;
+  items.forEach(i => {
+    const p = Number(i.price||0);
+    if (i.owner === 'A') aSum += p;
+    else if (i.owner === 'B') bSum += p;
+    else { aSum += Math.round(p/2); bSum += Math.round(p/2); }
+  });
+  document.getElementById('i-a').textContent = fmt(aSum)+'만';
+  document.getElementById('i-b').textContent = fmt(bSum)+'만';
+  const colorMap = { A: 'var(--dd)', B: 'var(--du)', '공동': 'var(--di)' };
+  el.innerHTML = '<div class="list-card">' +
+    items.map(i => `<div class="list-row">
+      <div class="row-dot" style="background:${colorMap[i.owner]||'var(--th)'}"></div>
+      <div class="row-main">
+        <div class="row-label">${i.name}</div>
+        <div class="row-meta">${i.owner} 소유 · ${i.date||''} ${i.memo ? '· '+i.memo : ''}</div>
+      </div>
+      <div class="row-right">
+        <div class="row-val">${i.price ? fmt(i.price)+'만' : ''}</div>
+        <button class="del-btn" onclick="deleteItem('items','${i.id}',loadItem)">✕</button>
+      </div>
+    </div>`).join('') + '</div>';
+}
+
+// ──────────────────────────────────────────
+// 삭제
+// ──────────────────────────────────────────
+async function deleteItem(colName, id, reloadFn) {
+  if (!confirm('삭제할까요?')) return;
+  await window._del(window._doc(window._db, colName, id));
+  calEvents = {};
+  await loadAll();
+}
+window.deleteItem = deleteItem;
+
+// ──────────────────────────────────────────
+// 캘린더
+// ──────────────────────────────────────────
+function buildCal() {
+  const lbl = `${cY}년 ${cM+1}월`;
+  document.getElementById('mlabel').textContent = lbl;
+  updateTopbarSub();
+  const g = document.getElementById('cal-grid');
+  g.innerHTML = '';
+  const first = new Date(cY, cM, 1).getDay();
+  const total = new Date(cY, cM+1, 0).getDate();
+  const prev  = new Date(cY, cM, 0).getDate();
+  for (let i = 0; i < first; i++) {
+    g.appendChild(mkCell(prev - first + 1 + i, true, i === 0, false, []));
+  }
+  for (let d = 1; d <= total; d++) {
+    const dow = (first + d - 1) % 7;
+    const isToday = d === TODAY.getDate() && cM === TODAY.getMonth() && cY === TODAY.getFullYear();
+    const key = `${cY}-${cM+1}-${d}`;
+    const dots = calEvents[key] || [];
+    const cell = mkCell(d, false, dow === 0, isToday, dots);
+    if (d === selD) cell.classList.add('sel');
+    cell.onclick = () => selectDay(d, dow, dots);
+    g.appendChild(cell);
+  }
+  const rem = (first + total) % 7;
+  if (rem > 0) for (let i = 1; i <= 7 - rem; i++) g.appendChild(mkCell(i, true, false, false, []));
+}
+
+function mkCell(d, other, sun, isToday, dots) {
+  const c = document.createElement('div');
+  c.className = 'cc' + (isToday ? ' today' : '');
+  const dn = document.createElement('div');
+  dn.className = 'dn' + (other ? ' o' : '') + (sun ? ' s' : '');
+  dn.textContent = d;
+  c.appendChild(dn);
+  if (dots.length) {
+    const dw = document.createElement('div'); dw.className = 'dots';
+    dots.forEach(t => { const dot = document.createElement('div'); dot.className = `dot d-${t}`; dw.appendChild(dot); });
+    c.appendChild(dw);
+  }
+  return c;
+}
+
+function selectDay(d, dow, dots) {
+  selD = d;
+  buildCal();
+  const panel = document.getElementById('day-panel');
+  panel.classList.remove('hidden');
+  document.getElementById('dp-lbl').textContent = `🐾 ${cM+1}월 ${d}일 (${DAYS[dow]})`;
+  catOpen = false;
+  document.getElementById('dp-body').classList.add('hidden');
+  document.getElementById('dp-hint').textContent = '+ 추가하기 ↓';
+  const exSec  = document.getElementById('exist-sec');
+  const exList = document.getElementById('exist-list');
+  if (dots.length) {
+    exSec.classList.remove('hidden');
+    const cm = { dep:['var(--dd)','보증금'], util:['var(--du)','공과금'], rule:['var(--dr)','규칙'], item:['var(--di)','가전'] };
+    exList.innerHTML = dots.map(t => `<div class="exist-row">
+      <div class="exist-left"><div class="edot" style="background:${cm[t][0]}"></div>
+      <div><div class="elabel">${cm[t][1]}</div><div class="esub">등록된 항목 있음</div></div></div>
+    </div>`).join('');
+  } else {
+    exSec.classList.add('hidden');
+    exList.innerHTML = '';
+  }
+}
+
+function toggleCat() {
+  catOpen = !catOpen;
+  document.getElementById('dp-body').classList.toggle('hidden', !catOpen);
+  document.getElementById('dp-hint').textContent = catOpen ? '닫기 ↑' : '+ 추가하기 ↓';
+}
+window.toggleCat = toggleCat;
+
+function chMonth(d) {
+  cM += d;
+  if (cM > 11) { cM = 0; cY++; }
+  if (cM < 0)  { cM = 11; cY--; }
+  selD = null;
+  calEvents = {};
+  document.getElementById('day-panel').classList.add('hidden');
+  if (window._db) loadAll(); else buildCal();
+}
+window.chMonth = chMonth;
+
+function updateTopbarSub() {
+  const el = document.getElementById('topbar-sub');
+  if (el) el.textContent = `${cY}년 ${cM+1}월`;
+}
+
+// ──────────────────────────────────────────
+// 탭 전환
+// ──────────────────────────────────────────
+const views = { home:'view-home', dep:'view-dep', util:'view-util', rule:'view-rule', item:'view-item' };
+function goTab(t) {
+  Object.keys(views).forEach(k => {
+    document.getElementById(views[k]).classList.add('hidden');
+    document.getElementById('ni-'+k).classList.remove('act');
+    document.getElementById('niw-'+k).classList.remove('act');
+  });
+  document.getElementById(views[t]).classList.remove('hidden');
+  document.getElementById('ni-'+t).classList.add('act');
+  document.getElementById('niw-'+t).classList.add('act');
+  document.getElementById('scroll-area').scrollTop = 0;
+}
+window.goTab = goTab;
+
+// ──────────────────────────────────────────
+// 모달
+// ──────────────────────────────────────────
+let curModal = null;
+function openModal(type) {
+  curModal = type;
+  document.getElementById('modal-backdrop').classList.remove('hidden');
+  ['dep','util','rule','item'].forEach(t => document.getElementById('modal-'+t).classList.add('hidden'));
+  document.getElementById('modal-'+type).classList.remove('hidden');
+  // 날짜 기본값 = 선택한 날짜 or 오늘
+  const dateVal = selD
+    ? `${cY}-${String(cM+1).padStart(2,'0')}-${String(selD).padStart(2,'0')}`
+    : TODAY.toISOString().slice(0,10);
+  const dateFields = ['f-dep-date','f-util-date','f-rule-date','f-item-date'];
+  dateFields.forEach(id => { const el = document.getElementById(id); if(el) el.value = dateVal; });
+  // 반복 요일 초기화
+  document.querySelectorAll('.day-chip').forEach(c => c.classList.remove('on'));
+}
+window.openModal = openModal;
+
+function closeModal() {
+  document.getElementById('modal-backdrop').classList.add('hidden');
+  curModal = null;
+}
+window.closeModal = closeModal;
+
+function closeModalBackdrop(e) {
+  if (e.target.id === 'modal-backdrop') closeModal();
+}
+window.closeModalBackdrop = closeModalBackdrop;
+
+function toggleDay(el) { el.classList.toggle('on'); }
+window.toggleDay = toggleDay;
+
+// ──────────────────────────────────────────
+// 폼 저장
+// ──────────────────────────────────────────
+async function submitForm(type) {
+  try {
+    let data = {};
+    if (type === 'dep') {
+      const name = document.getElementById('f-dep-name').value.trim();
+      if (!name) { alert('항목명을 입력해주세요'); return; }
+      data = {
+        name,
+        date:   document.getElementById('f-dep-date').value,
+        amount: document.getElementById('f-dep-amount').value,
+        total:  document.getElementById('f-dep-total').value,
+        aShare: document.getElementById('f-dep-a').value,
+        bShare: document.getElementById('f-dep-b').value,
+        memo:   document.getElementById('f-dep-memo').value,
+        repeat: document.getElementById('f-dep-repeat').value,
+        createdAt: new Date().toISOString()
+      };
+      await window._add(window._col(window._db, 'deposits'), data);
+    } else if (type === 'util') {
+      const amount = document.getElementById('f-util-amount').value;
+      if (!amount) { alert('금액을 입력해주세요'); return; }
+      data = {
+        name:   document.getElementById('f-util-name').value,
+        date:   document.getElementById('f-util-date').value,
+        amount: Number(amount),
+        type:   document.getElementById('f-util-type').value,
+        memo:   document.getElementById('f-util-memo').value,
+        createdAt: new Date().toISOString()
+      };
+      await window._add(window._col(window._db, 'utilities'), data);
+    } else if (type === 'rule') {
+      const content = document.getElementById('f-rule-content').value.trim();
+      if (!content) { alert('규칙 내용을 입력해주세요'); return; }
+      const repeatDays = [...document.querySelectorAll('.day-chip.on')].map(c => c.dataset.day);
+      data = {
+        content,
+        category:   document.getElementById('f-rule-cat').value,
+        date:       document.getElementById('f-rule-date').value,
+        repeatDays,
+        createdAt: new Date().toISOString()
+      };
+      await window._add(window._col(window._db, 'rules'), data);
+    } else if (type === 'item') {
+      const name = document.getElementById('f-item-name').value.trim();
+      if (!name) { alert('품목명을 입력해주세요'); return; }
+      data = {
+        name,
+        date:  document.getElementById('f-item-date').value,
+        price: document.getElementById('f-item-price').value,
+        owner: document.getElementById('f-item-owner').value,
+        memo:  document.getElementById('f-item-memo').value,
+        createdAt: new Date().toISOString()
+      };
+      await window._add(window._col(window._db, 'items'), data);
+    }
+    closeModal();
+    calEvents = {};
+    await loadAll();
+  } catch(err) {
+    alert('저장 중 오류가 발생했어요: ' + err.message);
+    console.error(err);
+  }
+}
+window.submitForm = submitForm;
+
+// ──────────────────────────────────────────
+// PWA 서비스워커 등록
+// ──────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(console.error);
+}
+</script>
+
+</body>
+</html>
